@@ -40,13 +40,59 @@ typedef struct SDL_Process {
     SDL_ProcessFlags flags;
 } SDL_Process;
 
+char **dupstrlist(const char * const * list)
+{
+    unsigned int n = 0;
+    const char * const * ptr = list;
+
+    while (*ptr++) {
+        n++;
+    }
+
+    char **newlist = SDL_malloc(sizeof(char *) * (n + 1));
+
+    if (!newlist) {
+        return NULL;
+    }
+
+    ptr = list;
+    char **newptr = newlist;
+    while (*ptr) {
+        *newptr = SDL_strdup(*ptr);
+
+        if (!*newptr) {
+            for (char **delptr = newlist; delptr != newptr; delptr++) {
+                SDL_free(*delptr);
+            }
+            return NULL;
+        }
+
+        newptr++;
+        ptr++;
+    }
+
+    *newptr = NULL;
+    return newlist;
+}
+
+void freestrlist(char **list)
+{
+  char **ptr = list;
+
+  while (*ptr) {
+      SDL_free(*ptr);
+      ptr++;
+  }
+
+  SDL_free(list);
+}
+
 SDL_Process *SDL_CreateProcess(const char * const *args, const char * const *env, SDL_ProcessFlags flags)
 {
     // Keep the malloc() before exec() so that an OOM won't run a process at all
     SDL_Process *process = SDL_malloc(sizeof(SDL_Process));
 
     if (!process) {
-        SDL_OutOfMemory();
         return NULL;
     }
 
@@ -125,12 +171,20 @@ SDL_Process *SDL_CreateProcess(const char * const *args, const char * const *env
             dup2(process->stderr_pipe[WRITE_END], STDERR_FILENO);
         }
 
-        // No need to free `process`; it will be overwritten by exec()
+        char **mutable_args = dupstrlist(args);
+        char **mutable_env = env ? dupstrlist(env) : NULL;
+
+        // We are in a new process; don't bother freeing because either exec*() or exit() will succeed
+
+        if (!mutable_args || (env && !mutable_env)) {
+            fprintf(stderr, "Could not clone args/env: %s\n", SDL_GetError());
+            exit(1);
+        }
 
         if (env) {
-            execve(args[0], args, env);
+            execve(args[0], mutable_args, mutable_env);
         } else {
-            execv(args[0], args);
+            execv(args[0], mutable_args);
         }
 
         // If this is reached, execv() failed

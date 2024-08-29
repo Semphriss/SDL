@@ -47,7 +47,7 @@ typedef enum {
     SDL_PROCESS_ERRORS_TO_STDERR = 1 << 3,
 } SDL_ProcessFlags;
 
-typedef void *SDL_Process;
+typedef struct SDL_Process SDL_Process;
 
 /**
  * Create a new process.
@@ -62,7 +62,7 @@ typedef void *SDL_Process;
  *
  * \since This function is available since SDL 3.0.0.
  */
-extern SDL_DECLSPEC SDL_Process SDLCALL SDL_CreateProcess(const char * const *args, const char * const *env, SDL_ProcessFlags flags);
+extern SDL_DECLSPEC SDL_Process *SDLCALL SDL_CreateProcess(const char * const *args, const char * const *env, SDL_ProcessFlags flags);
 
 /**
  * Write to a process' stdin.
@@ -77,7 +77,7 @@ extern SDL_DECLSPEC SDL_Process SDLCALL SDL_CreateProcess(const char * const *ar
  *
  * \since This function is available since SDL 3.0.0.
  */
-extern SDL_DECLSPEC int SDLCALL SDL_WriteProcess(SDL_Process process, const void *buffer, int size);
+extern SDL_DECLSPEC int SDLCALL SDL_WriteProcess(SDL_Process *process, const void *buffer, int size);
 
 /**
  * Read from a process' stdout.
@@ -92,7 +92,7 @@ extern SDL_DECLSPEC int SDLCALL SDL_WriteProcess(SDL_Process process, const void
  *
  * \since This function is available since SDL 3.0.0.
  */
-extern SDL_DECLSPEC int SDLCALL SDL_ReadProcess(SDL_Process process, void *buffer, int size);
+extern SDL_DECLSPEC int SDLCALL SDL_ReadProcess(SDL_Process *process, void *buffer, int size);
 
 /**
  * Read from a process' stderr.
@@ -107,7 +107,7 @@ extern SDL_DECLSPEC int SDLCALL SDL_ReadProcess(SDL_Process process, void *buffe
  *
  * \since This function is available since SDL 3.0.0.
  */
-extern SDL_DECLSPEC int SDLCALL SDL_ReadErrProcess(SDL_Process process, void *buffer, int size);
+extern SDL_DECLSPEC int SDLCALL SDL_ReadErrProcess(SDL_Process *process, void *buffer, int size);
 
 /**
  * Stop a process.
@@ -119,7 +119,7 @@ extern SDL_DECLSPEC int SDLCALL SDL_ReadErrProcess(SDL_Process process, void *bu
  *
  * \since This function is available since SDL 3.0.0.
  */
-extern SDL_DECLSPEC SDL_bool SDLCALL SDL_KillProcess(SDL_Process process, SDL_bool force);
+extern SDL_DECLSPEC SDL_bool SDLCALL SDL_KillProcess(SDL_Process *process, SDL_bool force);
 
 /**
  * Wait for a process to finish.
@@ -135,7 +135,7 @@ extern SDL_DECLSPEC SDL_bool SDLCALL SDL_KillProcess(SDL_Process process, SDL_bo
  *
  * \since This function is available since SDL 3.0.0.
  */
-extern SDL_DECLSPEC int SDLCALL SDL_WaitProcess(SDL_Process process, SDL_bool block);
+extern SDL_DECLSPEC int SDLCALL SDL_WaitProcess(SDL_Process *process, SDL_bool block);
 
 /**
  * Destroy a previously created process
@@ -146,7 +146,7 @@ extern SDL_DECLSPEC int SDLCALL SDL_WaitProcess(SDL_Process process, SDL_bool bl
  *
  * \since This function is available since SDL 3.0.0.
  */
-extern SDL_DECLSPEC void SDLCALL SDL_DestroyProcess(SDL_Process process);
+extern SDL_DECLSPEC void SDLCALL SDL_DestroyProcess(SDL_Process *process);
 
 /* Ends C function definitions when using C++ */
 #ifdef __cplusplus

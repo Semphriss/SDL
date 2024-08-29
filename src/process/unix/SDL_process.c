@@ -32,18 +32,18 @@
 #define READ_END 0
 #define WRITE_END 1
 
-typedef struct {
+typedef struct SDL_Process {
     int pid;
     int stdin_pipe[2];
     int stdout_pipe[2];
     int stderr_pipe[2];
     SDL_ProcessFlags flags;
-} SDL_UnixProcess;
+} SDL_Process;
 
-SDL_Process SDL_CreateProcess(const char * const *args, const char * const *env, SDL_ProcessFlags flags)
+SDL_Process *SDL_CreateProcess(const char * const *args, const char * const *env, SDL_ProcessFlags flags)
 {
     // Keep the malloc() before exec() so that an OOM won't run a process at all
-    SDL_UnixProcess *process = SDL_malloc(sizeof(SDL_UnixProcess));
+    SDL_Process *process = SDL_malloc(sizeof(SDL_Process));
 
     if (!process) {
         SDL_OutOfMemory();
@@ -157,19 +157,19 @@ SDL_Process SDL_CreateProcess(const char * const *args, const char * const *env,
     }
 }
 
-int SDL_WriteProcess(SDL_Process process, const void *buffer, int size)
+int SDL_WriteProcess(SDL_Process *process, const void *buffer, int size)
 {
     if (!process) {
         SDL_SetError("Attempt to call SDL_WriteProcess() with NULL process");
         return -1;
     }
 
-    if (!(((SDL_UnixProcess *) process)->flags & SDL_PROCESS_STDIN)) {
+    if (!(process->flags & SDL_PROCESS_STDIN)) {
         SDL_SetError("Cannot read from process created without SDL_PROCESS_STDIN");
         return -1;
     }
 
-    int ret = write(((SDL_UnixProcess *) process)->stdin_pipe[WRITE_END], buffer, size);
+    int ret = write(process->stdin_pipe[WRITE_END], buffer, size);
 
     if (ret < 0) {
         SDL_SetError("Could not write(): %s", strerror(errno));
@@ -178,19 +178,19 @@ int SDL_WriteProcess(SDL_Process process, const void *buffer, int size)
     return ret;
 }
 
-int SDL_ReadProcess(SDL_Process process, void *buffer, int size)
+int SDL_ReadProcess(SDL_Process *process, void *buffer, int size)
 {
     if (!process) {
         SDL_SetError("Attempt to call SDL_ReadProcess() with NULL process");
         return -1;
     }
 
-    if (!(((SDL_UnixProcess *) process)->flags & SDL_PROCESS_STDOUT)) {
+    if (!(process->flags & SDL_PROCESS_STDOUT)) {
         SDL_SetError("Cannot read from process created without SDL_PROCESS_STDOUT");
         return -1;
     }
 
-    int ret = read(((SDL_UnixProcess *) process)->stdout_pipe[READ_END], buffer, size);
+    int ret = read(process->stdout_pipe[READ_END], buffer, size);
 
     if (ret < 0) {
         SDL_SetError("Could not read(): %s", strerror(errno));
@@ -199,19 +199,19 @@ int SDL_ReadProcess(SDL_Process process, void *buffer, int size)
     return ret;
 }
 
-int SDL_ReadErrProcess(SDL_Process process, void *buffer, int size)
+int SDL_ReadErrProcess(SDL_Process *process, void *buffer, int size)
 {
     if (!process) {
         SDL_SetError("Attempt to call SDL_ReadErrProcess() with NULL process");
         return -1;
     }
 
-    if (!(((SDL_UnixProcess *) process)->flags & SDL_PROCESS_STDERR)) {
+    if (!(process->flags & SDL_PROCESS_STDERR)) {
         SDL_SetError("Cannot read from process created without SDL_PROCESS_STDERR");
         return -1;
     }
 
-    int ret = read(((SDL_UnixProcess *) process)->stderr_pipe[READ_END], buffer, size);
+    int ret = read(process->stderr_pipe[READ_END], buffer, size);
 
     if (ret < 0) {
         SDL_SetError("Could not read(): %s", strerror(errno));
@@ -220,14 +220,14 @@ int SDL_ReadErrProcess(SDL_Process process, void *buffer, int size)
     return ret;
 }
 
-SDL_bool SDL_KillProcess(SDL_Process process, SDL_bool force)
+SDL_bool SDL_KillProcess(SDL_Process *process, SDL_bool force)
 {
     if (!process) {
         SDL_SetError("Attempt to call SDL_KillProcess() with NULL process");
         return -1;
     }
 
-    int ret = kill(((SDL_UnixProcess *) process)->pid, force ? SIGKILL : SIGTERM);
+    int ret = kill(process->pid, force ? SIGKILL : SIGTERM);
 
     if (ret < 0) {
         SDL_SetError("Could not kill(): %s", strerror(errno));
@@ -237,14 +237,14 @@ SDL_bool SDL_KillProcess(SDL_Process process, SDL_bool force)
 }
 
 /** @returns 1 if the process exited, 0 if not, -1 if an error occured. */
-int SDL_WaitProcess(SDL_Process process, SDL_bool block)
+int SDL_WaitProcess(SDL_Process *process, SDL_bool block)
 {
     if (!process) {
         SDL_SetError("Attempt to call SDL_WaitProcess() with NULL process");
         return -1;
     }
 
-    int ret = waitpid(((SDL_UnixProcess *) process)->pid, NULL, block ? 0 : WNOHANG);
+    int ret = waitpid(process->pid, NULL, block ? 0 : WNOHANG);
 
     if (ret < 0) {
         SDL_SetError("Could not waitpid(): %s", strerror(errno));
@@ -254,7 +254,7 @@ int SDL_WaitProcess(SDL_Process process, SDL_bool block)
     return ret != 0;
 }
 
-void SDL_DestroyProcess(SDL_Process process)
+void SDL_DestroyProcess(SDL_Process *process)
 {
-    SDL_free((SDL_UnixProcess *) process);
+    SDL_free(process);
 }

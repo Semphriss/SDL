@@ -20,44 +20,44 @@
 */
 #include "SDL_internal.h"
 
-SDL_Process SDL_CreateProcess(const char * const *args, const char * const *env, SDL_ProcessFlags flags)
+SDL_Process *SDL_CreateProcess(const char * const *args, const char * const *env, SDL_ProcessFlags flags)
 {
     SDL_Unsupported();
     return NULL;
 }
 
-int SDL_WriteProcess(SDL_Process process, const void *buffer, int size)
+int SDL_WriteProcess(SDL_Process *process, const void *buffer, int size)
 {
     SDL_Unsupported();
     return -1;
 }
 
-int SDL_ReadProcess(SDL_Process process, void *buffer, int size)
+int SDL_ReadProcess(SDL_Process *process, void *buffer, int size)
 {
     SDL_Unsupported();
     return -1;
 }
 
-int SDL_ReadErrProcess(SDL_Process process, void *buffer, int size)
+int SDL_ReadErrProcess(SDL_Process *process, void *buffer, int size)
 {
     SDL_Unsupported();
     return -1;
 }
 
-SDL_bool SDL_KillProcess(SDL_Process process, SDL_bool force)
+SDL_bool SDL_KillProcess(SDL_Process *process, SDL_bool force)
 {
     SDL_Unsupported();
     return SDL_false;
 }
 
 /** @returns 1 if the process exited, 0 if not, -1 if an error occured. */
-int SDL_WaitProcess(SDL_Process process, SDL_bool block)
+int SDL_WaitProcess(SDL_Process *process, SDL_bool block)
 {
     SDL_Unsupported();
     return -1;
 }
 
-void SDL_DestroyProcess(SDL_Process process)
+void SDL_DestroyProcess(SDL_Process *process)
 {
     SDL_Unsupported();
 }

@@ -47,7 +47,7 @@ int SDL_ReadErrProcess(SDL_Process *process, void *buffer, int size)
 SDL_bool SDL_KillProcess(SDL_Process *process, SDL_bool force)
 {
     SDL_Unsupported();
-    return SDL_false;
+    return false;
 }
 
 /** @returns 1 if the process exited, 0 if not, -1 if an error occured. */

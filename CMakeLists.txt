@@ -2934,7 +2934,7 @@ if (SDL_DIALOG)
 endif()
 
 if (SDL_PROCESS)
-  if(UNIX)
+  if(UNIX AND NOT WATCHOS AND NOT TVOS)
     sdl_sources(${SDL3_SOURCE_DIR}/src/process/unix/SDL_process.c)
     set(HAVE_SDL_PROCESS TRUE)
   endif()

@@ -64,50 +64,11 @@ typedef struct SDL_Process SDL_Process;
  */
 extern SDL_DECLSPEC SDL_Process *SDLCALL SDL_CreateProcess(const char * const *args, const char * const *env, SDL_ProcessFlags flags);
 
-/**
- * Write to a process' stdin.
- *
- * The process must have been created with the SDL_EXEC_STDIN flag, else this function will fail.
- *
- * \param process The process to send data to.
- * \param buffer A buffer containing the data to send to the process.
- * \param size The amount of data to send to the process.
- *
- * \returns The number of bytes written, or -1 on error; call SDL_GetError() for more information.
- *
- * \since This function is available since SDL 3.0.0.
- */
-extern SDL_DECLSPEC int SDLCALL SDL_WriteProcess(SDL_Process *process, const void *buffer, int size);
+#define SDL_PROP_PROCESS_STDIN_STREAM "SDL.process.stdin"
+#define SDL_PROP_PROCESS_STDOUT_STREAM "SDL.process.stdout"
+#define SDL_PROP_PROCESS_STDERR_STREAM "SDL.process.stderr"
 
-/**
- * Read from a process' stdout.
- *
- * The process must have been created with the SDL_EXEC_STDOUT flag, else this function will fail.
- *
- * \param process The process to read data from.
- * \param buffer A buffer that will contain the data read from the process.
- * \param size The amount of data to read from the process.
- *
- * \returns The number of bytes read, or -1 on error; call SDL_GetError() for more information.
- *
- * \since This function is available since SDL 3.0.0.
- */
-extern SDL_DECLSPEC int SDLCALL SDL_ReadProcess(SDL_Process *process, void *buffer, int size);
-
-/**
- * Read from a process' stderr.
- *
- * The process must have been created with the SDL_EXEC_STDERR flag, else this function will fail.
- *
- * \param process The process to read data from.
- * \param buffer A buffer that will contain the data read from the process.
- * \param size The amount of data to read from the process.
- *
- * \returns The number of bytes read, or -1 on error; call SDL_GetError() for more information.
- *
- * \since This function is available since SDL 3.0.0.
- */
-extern SDL_DECLSPEC int SDLCALL SDL_ReadErrProcess(SDL_Process *process, void *buffer, int size);
+extern SDL_DECLSPEC SDL_PropertiesID SDL_GetProcessProperties(SDL_Process *process);
 
 /**
  * Stop a process.

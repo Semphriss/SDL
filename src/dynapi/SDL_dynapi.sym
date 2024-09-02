@@ -1142,9 +1142,7 @@ SDL3_0.0.0 {
     SDL_wcsstr;
     SDL_wcstol;
     SDL_CreateProcess;
-    SDL_WriteProcess;
-    SDL_ReadProcess;
-    SDL_ReadErrProcess;
+    SDL_GetProcessProperties;
     SDL_KillProcess;
     SDL_WaitProcess;
     SDL_DestroyProcess;

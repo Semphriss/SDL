@@ -38,9 +38,169 @@ typedef struct SDL_Process {
     int stdout_pipe[2];
     int stderr_pipe[2];
     SDL_ProcessFlags flags;
+    SDL_PropertiesID props;
 } SDL_Process;
 
-char **dupstrlist(const char * const * list)
+static Sint64 SDLCALL process_size_unsupported(void *userdata)
+{
+    SDL_SetError("Underlying stream has no pre-determined size");
+    return -1;
+}
+
+static Sint64 SDLCALL process_seek_unsupported(void *userdata, Sint64 offset, SDL_IOWhence whence)
+{
+    SDL_SetError("Underlying stream is not seekable");
+    return -1;
+}
+
+static size_t SDLCALL process_read_unsupported(void *userdata, void *ptr, size_t size, SDL_IOStatus *status)
+{
+    if (status) {
+        *status = SDL_IO_STATUS_ERROR;
+    }
+    SDL_SetError("Underlying stream is not readable");
+    return 0;
+}
+
+static size_t SDLCALL process_write_unsupported(void *userdata, const void *ptr, size_t size, SDL_IOStatus *status)
+{
+    if (status) {
+        *status = SDL_IO_STATUS_ERROR;
+    }
+    SDL_SetError("Underlying stream is not writable");
+    return 0;
+}
+
+static size_t SDLCALL process_read_from_stdout(void *userdata, void *ptr, size_t size, SDL_IOStatus *status)
+{
+    SDL_Process *process = (SDL_Process *) userdata;
+
+    if (!(process->flags & SDL_PROCESS_STDOUT)) {
+        if (status) {
+            *status = SDL_IO_STATUS_ERROR;
+        }
+        SDL_SetError("Cannot read from process created without SDL_PROCESS_STDOUT");
+        return 0;
+    }
+
+    int ret = read(process->stdout_pipe[READ_END], ptr, size);
+
+    if (ret < 0) {
+        if (status) {
+            *status = SDL_IO_STATUS_ERROR;
+        }
+        SDL_SetError("Could not read(): %s", strerror(errno));
+        return 0;
+    }
+
+    return ret;
+}
+
+static size_t SDLCALL process_read_from_stderr(void *userdata, void *ptr, size_t size, SDL_IOStatus *status)
+{
+    SDL_Process *process = (SDL_Process *) userdata;
+
+    if (!(process->flags & SDL_PROCESS_STDERR)) {
+        if (status) {
+            *status = SDL_IO_STATUS_ERROR;
+        }
+        SDL_SetError("Cannot read from process created without SDL_PROCESS_STDERR");
+        return 0;
+    }
+
+    int ret = read(process->stderr_pipe[READ_END], ptr, size);
+
+    if (ret < 0) {
+        if (status) {
+            *status = SDL_IO_STATUS_ERROR;
+        }
+        SDL_SetError("Could not read(): %s", strerror(errno));
+        return 0;
+    }
+
+    return ret;
+}
+
+static size_t SDLCALL process_write_to_stdin(void *userdata, const void *ptr, size_t size, SDL_IOStatus *status)
+{
+    SDL_Process *process = (SDL_Process *) userdata;
+
+    if (!(process->flags & SDL_PROCESS_STDIN)) {
+        SDL_SetError("Cannot read from process created without SDL_PROCESS_STDIN");
+        if (status) {
+            *status = SDL_IO_STATUS_ERROR;
+        }
+        return 0;
+    }
+
+    int ret = write(process->stdin_pipe[WRITE_END], ptr, size);
+
+    if (ret < 0) {
+        SDL_SetError("Could not write(): %s", strerror(errno));
+        if (status) {
+            *status = SDL_IO_STATUS_ERROR;
+        }
+        return 0;
+    }
+
+    return ret;
+}
+
+static SDL_bool SDLCALL process_stdin_close(void *userdata)
+{
+    SDL_Process *process = (SDL_Process *) userdata;
+
+    if (!(process->flags & SDL_PROCESS_STDIN)) {
+        SDL_SetError("Cannot close stdin from process created without SDL_PROCESS_STDIN");
+        return SDL_FALSE;
+    }
+    if (process->stdin_pipe[WRITE_END] < 0) {
+        SDL_SetError("stdin already closed");
+        return SDL_FALSE;
+    }
+    close(process->stdin_pipe[WRITE_END]);
+    process->stdin_pipe[WRITE_END] = -1;
+    SDL_ClearProperty(process->props, SDL_PROP_PROCESS_STDIN_STREAM);
+    return SDL_TRUE;
+}
+
+static SDL_bool SDLCALL process_stdout_close(void *userdata)
+{
+    SDL_Process *process = (SDL_Process *) userdata;
+
+    if (!(process->flags & SDL_PROCESS_STDOUT)) {
+        SDL_SetError("Cannot close stdout from process created without SDL_PROCESS_STDOUT");
+        return SDL_FALSE;
+    }
+    if (process->stdout_pipe[READ_END] < 0) {
+        SDL_SetError("stdout already closed");
+        return SDL_FALSE;
+    }
+    close(process->stdout_pipe[READ_END]);
+    process->stdout_pipe[READ_END] = -1;
+    SDL_ClearProperty(process->props, SDL_PROP_PROCESS_STDOUT_STREAM);
+    return SDL_TRUE;
+}
+
+static SDL_bool SDLCALL process_stderr_close(void *userdata)
+{
+    SDL_Process *process = (SDL_Process *) userdata;
+
+    if (!(process->flags & SDL_PROCESS_STDERR)) {
+        SDL_SetError("Cannot close stderr from process created without SDL_PROCESS_STDOUT");
+        return SDL_FALSE;
+    }
+    if (process->stderr_pipe[READ_END] < 0) {
+        SDL_SetError("stderr already closed");
+        return SDL_FALSE;
+    }
+    close(process->stderr_pipe[READ_END]);
+    process->stderr_pipe[READ_END] = -1;
+    SDL_ClearProperty(process->props, SDL_PROP_PROCESS_STDERR_STREAM);
+    return SDL_TRUE;
+}
+
+static char **dupstrlist(const char * const * list)
 {
     unsigned int n = 0;
     const char * const * ptr = list;
@@ -75,7 +235,7 @@ char **dupstrlist(const char * const * list)
     return newlist;
 }
 
-void freestrlist(char **list)
+static void freestrlist(char **list)
 {
   char **ptr = list;
 
@@ -97,6 +257,12 @@ SDL_Process *SDL_CreateProcess(const char * const *args, const char * const *env
     }
 
     process->flags = flags;
+
+    process->props = SDL_CreateProperties();
+    if (!process->props) {
+        SDL_free(process);
+        return NULL;
+    }
 
     if ((flags & SDL_PROCESS_STDIN) && (pipe(process->stdin_pipe) < 0)) {
         SDL_SetError("Could not pipe(): %s", strerror(errno));
@@ -193,17 +359,47 @@ SDL_Process *SDL_CreateProcess(const char * const *args, const char * const *env
             fprintf(stderr, "Could not execv/execve(): %s\n", strerror(errno));
         }
 
+        freestrlist(mutable_args);
+        freestrlist(mutable_env);
+
         exit(1);
     } else {
         if (flags & SDL_PROCESS_STDIN) {
+            SDL_IOStreamInterface iface;
+            iface.size = process_size_unsupported;
+            iface.seek = process_seek_unsupported;
+            iface.read = process_read_unsupported;
+            iface.write = process_write_to_stdin;
+            iface.close = process_stdin_close;
+            SDL_IOStream *io = SDL_OpenIO(&iface, process);
+            SDL_SetPointerProperty(process->props, SDL_PROP_PROCESS_STDIN_STREAM, io);
+
             close(process->stdin_pipe[READ_END]);
         }
 
         if (flags & SDL_PROCESS_STDOUT) {
+            SDL_IOStreamInterface iface;
+            iface.size = process_size_unsupported;
+            iface.seek = process_seek_unsupported;
+            iface.read = process_read_from_stdout;
+            iface.write = process_write_unsupported;
+            iface.close = process_stdout_close;
+            SDL_IOStream *io = SDL_OpenIO(&iface, process);
+            SDL_SetPointerProperty(process->props, SDL_PROP_PROCESS_STDOUT_STREAM, io);
+
             close(process->stdout_pipe[WRITE_END]);
         }
 
         if (flags & SDL_PROCESS_STDERR) {
+            SDL_IOStreamInterface iface;
+            iface.size = process_size_unsupported;
+            iface.seek = process_seek_unsupported;
+            iface.read = process_read_from_stderr;
+            iface.write = process_write_unsupported;
+            iface.close = process_stderr_close;
+            SDL_IOStream *io = SDL_OpenIO(&iface, process);
+            SDL_SetPointerProperty(process->props, SDL_PROP_PROCESS_STDERR_STREAM, io);
+
             close(process->stderr_pipe[WRITE_END]);
         }
 
@@ -211,67 +407,13 @@ SDL_Process *SDL_CreateProcess(const char * const *args, const char * const *env
     }
 }
 
-int SDL_WriteProcess(SDL_Process *process, const void *buffer, int size)
+SDL_PropertiesID SDL_GetProcessProperties(SDL_Process *process)
 {
     if (!process) {
-        SDL_SetError("Attempt to call SDL_WriteProcess() with NULL process");
+        SDL_SetError("Attempt to call SDL_GetProcessProperties() with NULL process");
         return -1;
     }
-
-    if (!(process->flags & SDL_PROCESS_STDIN)) {
-        SDL_SetError("Cannot read from process created without SDL_PROCESS_STDIN");
-        return -1;
-    }
-
-    int ret = write(process->stdin_pipe[WRITE_END], buffer, size);
-
-    if (ret < 0) {
-        SDL_SetError("Could not write(): %s", strerror(errno));
-    }
-
-    return ret;
-}
-
-int SDL_ReadProcess(SDL_Process *process, void *buffer, int size)
-{
-    if (!process) {
-        SDL_SetError("Attempt to call SDL_ReadProcess() with NULL process");
-        return -1;
-    }
-
-    if (!(process->flags & SDL_PROCESS_STDOUT)) {
-        SDL_SetError("Cannot read from process created without SDL_PROCESS_STDOUT");
-        return -1;
-    }
-
-    int ret = read(process->stdout_pipe[READ_END], buffer, size);
-
-    if (ret < 0) {
-        SDL_SetError("Could not read(): %s", strerror(errno));
-    }
-
-    return ret;
-}
-
-int SDL_ReadErrProcess(SDL_Process *process, void *buffer, int size)
-{
-    if (!process) {
-        SDL_SetError("Attempt to call SDL_ReadErrProcess() with NULL process");
-        return -1;
-    }
-
-    if (!(process->flags & SDL_PROCESS_STDERR)) {
-        SDL_SetError("Cannot read from process created without SDL_PROCESS_STDERR");
-        return -1;
-    }
-
-    int ret = read(process->stderr_pipe[READ_END], buffer, size);
-
-    if (ret < 0) {
-        SDL_SetError("Could not read(): %s", strerror(errno));
-    }
-
-    return ret;
+    return process->props;
 }
 
 SDL_bool SDL_KillProcess(SDL_Process *process, SDL_bool force)
@@ -310,5 +452,24 @@ int SDL_WaitProcess(SDL_Process *process, SDL_bool block)
 
 void SDL_DestroyProcess(SDL_Process *process)
 {
+    if (process->flags & SDL_PROCESS_STDIN) {
+        SDL_IOStream *io = (SDL_IOStream *) SDL_GetPointerProperty(process->props, SDL_PROP_PROCESS_STDIN_STREAM, NULL);
+        if (io) {
+            SDL_CloseIO(io);
+        }
+    }
+    if (process->flags & SDL_PROCESS_STDERR) {
+        SDL_IOStream *io = (SDL_IOStream *) SDL_GetPointerProperty(process->props, SDL_PROP_PROCESS_STDERR_STREAM, NULL);
+        if (io) {
+            SDL_CloseIO(io);
+        }
+    }
+    if (process->flags & SDL_PROCESS_STDOUT) {
+        SDL_IOStream *io = (SDL_IOStream *) SDL_GetPointerProperty(process->props, SDL_PROP_PROCESS_STDOUT_STREAM, NULL);
+        if (io) {
+            SDL_CloseIO(io);
+        }
+    }
+    SDL_DestroyProperties(process->props);
     SDL_free(process);
 }

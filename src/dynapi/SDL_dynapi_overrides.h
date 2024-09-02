@@ -1167,9 +1167,7 @@
 #define SDL_wcsstr SDL_wcsstr_REAL
 #define SDL_wcstol SDL_wcstol_REAL
 #define SDL_CreateProcess SDL_CreateProcess_REAL
-#define SDL_WriteProcess SDL_WriteProcess_REAL
-#define SDL_ReadProcess SDL_ReadProcess_REAL
-#define SDL_ReadErrProcess SDL_ReadErrProcess_REAL
+#define SDL_GetProcessProperties SDL_GetProcessProperties_REAL
 #define SDL_KillProcess SDL_KillProcess_REAL
 #define SDL_WaitProcess SDL_WaitProcess_REAL
 #define SDL_DestroyProcess SDL_DestroyProcess_REAL

@@ -250,7 +250,14 @@ static void freestrlist(char **list)
 SDL_Process *SDL_CreateProcess(const char * const *args, const char * const *env, SDL_ProcessFlags flags)
 {
     // Keep the malloc() before exec() so that an OOM won't run a process at all
-    SDL_Process *process = SDL_malloc(sizeof(SDL_Process));
+    SDL_Process *process;
+
+    if (!args) {
+        SDL_SetError("args");
+        return NULL;
+    }
+
+    process = SDL_malloc(sizeof(SDL_Process));
 
     if (!process) {
         return NULL;
@@ -282,7 +289,7 @@ SDL_Process *SDL_CreateProcess(const char * const *args, const char * const *env
         return NULL;
     }
 
-    if ((flags & SDL_PROCESS_STDERR) && (pipe(process->stderr_pipe) < 0)) {
+    if ((flags & SDL_PROCESS_STDERR) && (flags & SDL_PROCESS_STDERR_TO_STDOUT) != SDL_PROCESS_STDERR_TO_STDOUT && pipe(process->stderr_pipe) < 0) {
         SDL_SetError("Could not pipe(): %s", strerror(errno));
 
         if (flags & SDL_PROCESS_STDIN) {
@@ -333,8 +340,12 @@ SDL_Process *SDL_CreateProcess(const char * const *args, const char * const *env
         }
 
         if (flags & SDL_PROCESS_STDERR) {
-            close(process->stderr_pipe[READ_END]);
-            dup2(process->stderr_pipe[WRITE_END], STDERR_FILENO);
+            if ((flags & SDL_PROCESS_STDERR_TO_STDOUT) == SDL_PROCESS_STDERR_TO_STDOUT) {
+                dup2(process->stdout_pipe[WRITE_END], STDERR_FILENO);
+            } else {
+                close(process->stderr_pipe[READ_END]);
+                dup2(process->stderr_pipe[WRITE_END], STDERR_FILENO);
+            }
         }
 
         char **mutable_args = dupstrlist(args);
@@ -343,7 +354,7 @@ SDL_Process *SDL_CreateProcess(const char * const *args, const char * const *env
         // We are in a new process; don't bother freeing because either exec*() or exit() will succeed
 
         if (!mutable_args || (env && !mutable_env)) {
-            fprintf(stderr, "Could not clone args/env: %s\n", SDL_GetError());
+            SDL_LogError(SDL_LOG_CATEGORY_PROCESS, "Could not clone args/env: %s\n", SDL_GetError());
             exit(1);
         }
 
@@ -355,9 +366,7 @@ SDL_Process *SDL_CreateProcess(const char * const *args, const char * const *env
 
         // If this is reached, execv() failed
 
-        if (flags & SDL_PROCESS_ERRORS_TO_STDERR) {
-            fprintf(stderr, "Could not execv/execve(): %s\n", strerror(errno));
-        }
+        SDL_LogError(SDL_LOG_CATEGORY_PROCESS, "Could not execv/execve(): %s", strerror(errno));
 
         freestrlist(mutable_args);
         freestrlist(mutable_env);
@@ -390,7 +399,7 @@ SDL_Process *SDL_CreateProcess(const char * const *args, const char * const *env
             close(process->stdout_pipe[WRITE_END]);
         }
 
-        if (flags & SDL_PROCESS_STDERR) {
+        if ((flags & SDL_PROCESS_STDERR) && (flags & SDL_PROCESS_STDERR_TO_STDOUT) != SDL_PROCESS_STDERR_TO_STDOUT) {
             SDL_IOStreamInterface iface;
             iface.size = process_size_unsupported;
             iface.seek = process_seek_unsupported;
@@ -420,7 +429,7 @@ SDL_bool SDL_KillProcess(SDL_Process *process, SDL_bool force)
 {
     if (!process) {
         SDL_SetError("Attempt to call SDL_KillProcess() with NULL process");
-        return -1;
+        return SDL_FALSE;
     }
 
     int ret = kill(process->pid, force ? SIGKILL : SIGTERM);
@@ -429,25 +438,46 @@ SDL_bool SDL_KillProcess(SDL_Process *process, SDL_bool force)
         SDL_SetError("Could not kill(): %s", strerror(errno));
     }
 
+    /* FIXME: when ret != 0, SDL_SetError should be called */
+
     return ret == 0;
 }
 
 /** @returns 1 if the process exited, 0 if not, -1 if an error occured. */
-int SDL_WaitProcess(SDL_Process *process, SDL_bool block)
+int SDL_WaitProcess(SDL_Process *process, SDL_bool block, int *returncode)
 {
     if (!process) {
         SDL_SetError("Attempt to call SDL_WaitProcess() with NULL process");
         return -1;
     }
 
-    int ret = waitpid(process->pid, NULL, block ? 0 : WNOHANG);
+    int wstatus = 0;
+    int ret = waitpid(process->pid, &wstatus, block ? 0 : WNOHANG);
 
     if (ret < 0) {
         SDL_SetError("Could not waitpid(): %s", strerror(errno));
         return -1;
     }
 
-    return ret != 0;
+    if (ret == 0) {
+        return 0;
+    }
+
+    if (WIFEXITED(wstatus)) {
+        if (returncode) {
+            *returncode = WEXITSTATUS(wstatus);
+        }
+        return 1;
+    }
+
+    if (WIFSIGNALED(wstatus)) {
+        if (returncode) {
+            *returncode = WTERMSIG(wstatus);
+        }
+        return 1;
+    }
+
+    return 1;
 }
 
 void SDL_DestroyProcess(SDL_Process *process)

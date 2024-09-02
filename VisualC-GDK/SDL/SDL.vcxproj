@@ -364,6 +364,8 @@
     <ClInclude Include="..\..\include\SDL3\SDL_platform.h" />
     <ClInclude Include="..\..\include\SDL3\SDL_platform_defines.h" />
     <ClInclude Include="..\..\include\SDL3\SDL_power.h" />
+    <ClInclude Include="..\..\include\SDL3\SDL_process.h" />
+    <ClInclude Include="..\..\include\SDL3\SDL_properties.h" />
     <ClInclude Include="..\..\include\SDL3\SDL_rect.h" />
     <ClInclude Include="..\..\include\SDL3\SDL_render.h" />
     <ClInclude Include="..\..\include\SDL3\SDL_revision.h" />
@@ -753,6 +755,13 @@
     <ClCompile Include="..\..\src\misc\SDL_url.c" />
     <ClCompile Include="..\..\src\misc\windows\SDL_sysurl.c" />
     <ClCompile Include="..\..\src\power\SDL_power.c" />
+    <ClCompile Include="..\..\src\process\windows\SDL_process.c">
+      <ExcludedFromBuild Condition="'$(Platform)'=='Gaming.Xbox.Scarlett.x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Platform)'=='Gaming.Xbox.XboxOne.x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\..\src\process\dummy\SDL_power.c">
+      <ExcludedFromBuild Condition="'$(Platform)'=='Gaming.Desktop.x64'">true</ExcludedFromBuild>
+    </ClCompile>
     <ClCompile Include="..\..\src\power\windows\SDL_syspower.c" />
     <ClCompile Include="..\..\src\render\direct3d11\SDL_shaders_d3d11.c" />
     <ClCompile Include="..\..\src\render\direct3d12\SDL_render_d3d12.c">

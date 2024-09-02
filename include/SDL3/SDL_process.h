@@ -43,8 +43,8 @@ typedef enum {
     SDL_PROCESS_STDOUT = 1 << 1,
     /** Create a pipe from the process' stderr. Without this option, the process will output to the parent's stderr. */
     SDL_PROCESS_STDERR = 1 << 2,
-    /** Allow SDL to report errors on the child process' stderr if launching the process failed after a fork(). */
-    SDL_PROCESS_ERRORS_TO_STDERR = 1 << 3,
+    /** Forward sterr to stdout. This flag implies SDL_PROCESS_STDOUT and SDL_PROCESS_STDERR. */
+    SDL_PROCESS_STDERR_TO_STDOUT = (1 << 3) | SDL_PROCESS_STDOUT | SDL_PROCESS_STDERR,
 } SDL_ProcessFlags;
 
 typedef struct SDL_Process SDL_Process;
@@ -91,12 +91,13 @@ extern SDL_DECLSPEC SDL_bool SDLCALL SDL_KillProcess(SDL_Process *process, SDL_b
  *
  * \param process The process to wait for.
  * \param block If true, block until the process finishes; otherwise, report on the process' status.
+ * \param returncode If process exited, its return code is written to this pointer.
  *
  * \returns 1 if the process exited, 0 if not, -1 if an error occured. Call SDL_GetError() for more information.
  *
  * \since This function is available since SDL 3.0.0.
  */
-extern SDL_DECLSPEC int SDLCALL SDL_WaitProcess(SDL_Process *process, SDL_bool block);
+extern SDL_DECLSPEC int SDLCALL SDL_WaitProcess(SDL_Process *process, SDL_bool block, int *returncode);
 
 /**
  * Destroy a previously created process

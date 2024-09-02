@@ -73,6 +73,7 @@
     <ClInclude Include="..\include\SDL3\SDL_platform.h" />
     <ClInclude Include="..\include\SDL3\SDL_platform_defines.h" />
     <ClInclude Include="..\include\SDL3\SDL_power.h" />
+    <ClInclude Include="..\include\SDL3\SDL_process.h" />
     <ClInclude Include="..\include\SDL3\SDL_properties.h" />
     <ClInclude Include="..\include\SDL3\SDL_rect.h" />
     <ClInclude Include="..\include\SDL3\SDL_render.h" />
@@ -410,6 +411,7 @@
       <CompileAsWinRT Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</CompileAsWinRT>
       <CompileAsWinRT Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</CompileAsWinRT>
     </ClCompile>
+    <ClCompile Include="..\src\process\dummy\SDL_process.c" />
     <ClCompile Include="..\src\render\direct3d11\SDL_render_d3d11.c" />
     <ClCompile Include="..\src\render\direct3d11\SDL_render_winrt.cpp">
       <CompileAsWinRT>true</CompileAsWinRT>

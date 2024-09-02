@@ -93,7 +93,8 @@ static const char * const SDL_category_names[] = {
     "RENDER",
     "GPU",
     "INPUT",
-    "TEST"
+    "TEST",
+    "PROCESS"
 };
 SDL_COMPILE_TIME_ASSERT(category_names, SDL_arraysize(SDL_category_names) == SDL_LOG_CATEGORY_RESERVED1);
 

@@ -90,6 +90,7 @@ typedef enum SDL_LogCategory
     SDL_LOG_CATEGORY_GPU,
     SDL_LOG_CATEGORY_INPUT,
     SDL_LOG_CATEGORY_TEST,
+    SDL_LOG_CATEGORY_PROCESS,
 
     /* Reserved for future SDL library use */
     SDL_LOG_CATEGORY_RESERVED1,

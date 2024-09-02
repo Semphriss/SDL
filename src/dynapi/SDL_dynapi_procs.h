@@ -1175,5 +1175,5 @@ SDL_DYNAPI_PROC(long,SDL_wcstol,(const wchar_t *a, wchar_t **b, int c),(a,b,c),r
 SDL_DYNAPI_PROC(SDL_Process*,SDL_CreateProcess,(const char * const*a, const char * const*b, SDL_ProcessFlags c),(a,b,c),return)
 SDL_DYNAPI_PROC(SDL_PropertiesID,SDL_GetProcessProperties,(SDL_Process *a),(a),return)
 SDL_DYNAPI_PROC(SDL_bool,SDL_KillProcess,(SDL_Process *a, SDL_bool b),(a,b),return)
-SDL_DYNAPI_PROC(int,SDL_WaitProcess,(SDL_Process *a, SDL_bool b),(a,b),return)
+SDL_DYNAPI_PROC(int,SDL_WaitProcess,(SDL_Process *a, SDL_bool b, int *c),(a,b,c),return)
 SDL_DYNAPI_PROC(void,SDL_DestroyProcess,(SDL_Process *a),(a),)

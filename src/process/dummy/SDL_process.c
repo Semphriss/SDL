@@ -26,22 +26,10 @@ SDL_Process *SDL_CreateProcess(const char * const *args, const char * const *env
     return NULL;
 }
 
-int SDL_WriteProcess(SDL_Process *process, const void *buffer, int size)
+SDL_PropertiesID SDL_GetProcessProperties(SDL_Process *process)
 {
     SDL_Unsupported();
-    return -1;
-}
-
-int SDL_ReadProcess(SDL_Process *process, void *buffer, int size)
-{
-    SDL_Unsupported();
-    return -1;
-}
-
-int SDL_ReadErrProcess(SDL_Process *process, void *buffer, int size)
-{
-    SDL_Unsupported();
-    return -1;
+    return 0;
 }
 
 SDL_bool SDL_KillProcess(SDL_Process *process, SDL_bool force)
@@ -51,7 +39,7 @@ SDL_bool SDL_KillProcess(SDL_Process *process, SDL_bool force)
 }
 
 /** @returns 1 if the process exited, 0 if not, -1 if an error occured. */
-int SDL_WaitProcess(SDL_Process *process, SDL_bool block)
+int SDL_WaitProcess(SDL_Process *process, SDL_bool block, int *returncode)
 {
     SDL_Unsupported();
     return -1;

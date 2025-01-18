@@ -2,6 +2,8 @@
 #include <SDL3/SDL_main.h>
 #include <SDL3/SDL_test.h>
 
+static Uint32 close_tray_event;
+
 static void SDLCALL tray_quit(void *ptr, SDL_TrayEntry *entry)
 {
     SDL_Event e;
@@ -9,18 +11,11 @@ static void SDLCALL tray_quit(void *ptr, SDL_TrayEntry *entry)
     SDL_PushEvent(&e);
 }
 
-static bool trays_destroyed = false;
-
 static void SDLCALL tray_close(void *ptr, SDL_TrayEntry *entry)
 {
-    SDL_Tray **trays = (SDL_Tray **) ptr;
-
-    trays_destroyed = true;
-
-    SDL_DestroyTray(trays[0]);
-    SDL_DestroyTray(trays[1]);
-
-    SDL_free(trays);
+    SDL_Event e;
+    e.type = close_tray_event;
+    SDL_PushEvent(&e);
 }
 
 static void SDLCALL apply_icon(void *ptr, const char * const *filelist, int filter)
@@ -49,7 +44,7 @@ static void SDLCALL change_icon(void *ptr, SDL_TrayEntry *entry)
         { "All files", "*" },
     };
 
-    SDL_ShowOpenFileDialog(apply_icon, ptr, NULL, filters, 2, NULL, 0);
+    SDL_ShowOpenFileDialog(apply_icon, ptr, NULL, filters, SDL_arraysize(filters), NULL, 0);
 }
 
 static void SDLCALL print_entry(void *ptr, SDL_TrayEntry *entry)
@@ -106,6 +101,8 @@ static void SDLCALL append_button_to(void *ptr, SDL_TrayEntry *entry)
     SDL_TrayEntry *new_ctrl_enabled;
     SDL_TrayEntry *new_ctrl_disabled;
     SDL_TrayEntry *new_example;
+
+    close_tray_event = SDL_RegisterEvents(1);
 
     new_ctrl = SDL_InsertTrayEntryAt(SDL_GetTrayEntryParent(entry), -1, "New button", SDL_TRAYENTRY_SUBMENU);
 
@@ -569,17 +566,8 @@ int main(int argc, char **argv)
     SDL_TrayEntry *entry_close = SDL_InsertTrayEntryAt(menu, -1, "Close", SDL_TRAYENTRY_BUTTON);
     CHECK(entry_close);
 
-    /* TODO: Track memory! */
-    SDL_Tray **trays = SDL_malloc(sizeof(SDL_Tray *) * 2);
-    if (!trays) {
-        goto clean_all;
-    }
-
-    trays[0] = tray;
-    trays[1] = tray2;
-
     SDL_SetTrayEntryCallback(entry_quit, tray_quit, NULL);
-    SDL_SetTrayEntryCallback(entry_close, tray_close, trays);
+    SDL_SetTrayEntryCallback(entry_close, tray_close, NULL);
 
     SDL_InsertTrayEntryAt(menu, -1, NULL, 0);
 
@@ -619,18 +607,18 @@ int main(int argc, char **argv)
         } else if (e.type == SDL_EVENT_WINDOW_CLOSE_REQUESTED) {
             SDL_DestroyWindow(w);
             w = NULL;
+        } else if (e.type == close_tray_event) {
+            SDL_DestroyTray(tray);
+            SDL_DestroyTray(tray2);
+            tray = NULL;
+            tray2 = NULL;
         }
     }
 
 clean_all:
-    if (!trays_destroyed) {
-        SDL_DestroyTray(tray2);
-    }
-
+    SDL_DestroyTray(tray2);
 clean_tray1:
-    if (!trays_destroyed) {
-        SDL_DestroyTray(tray);
-    }
+    SDL_DestroyTray(tray);
 
 clean_window:
     if (w) {
